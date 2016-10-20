@@ -1,0 +1,7 @@
+This prototype requires an `email` and `password` as query string.
+
+To test if it functions, adjust the `test` property at the root of the database in the console
+and see it change in the application.
+
+After that, press the `Toggle` button and change the property again. There should be no
+new `console.log` entry.
