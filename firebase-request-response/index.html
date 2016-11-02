@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Firebase request response</title>
+  </head>
+  <body>
+    <div id="container" />
+
+    <script src="../react/react.js"></script>
+    <script src="../react/react-dom.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.14.0/babel.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/3.5.0/firebase.js"></script>
+    <script type="text/javascript" src="../shared/configuration.js"></script>
+    <script type="text/javascript" src="../shared/db.js"></script>
+
+    <script type="text/babel" data-plugins='transform-class-properties'>
+
+      const baseId = pathBasedAppId()
+      const clientApp1 = initializeApp({ appId: baseId + '-client1', config: {} })
+      const clientApp2 = initializeApp({ appId: baseId + '-client2', config: {} })
+      const serviceApp = initializeApp({ appId: baseId + '-service', config: configuration })
+
+      class FirebaseRequestResponse extends React.Component {
+
+        state = { response1: null, response2: null, preventRemove: false, serviceDisabled: false, testClientSecurity: false }
+
+        render() {
+          const { serviceDisabled, response1, response2, preventRemove, testClientSecurity } = this.state
+          const { uid1, uid2 } = this.props
+
+          return (
+            <div>
+              { serviceDisabled ? <p>Service disabled</p> : <Service /> }
+              <p>
+                Disable service: <input type='checkbox' value={serviceDisabled} onChange={this.checkboxToState('serviceDisabled')} /><br />
+                Prevent response removal: <input type='checkbox' value={preventRemove} onChange={this.checkboxToState('preventRemove')} /><br />
+                Test client security: <input type='checkbox' value={testClientSecurity} onChange={this.checkboxToState('testClientSecurity')} /><br />
+              </p>
+              <p>
+                <button onClick={this.sendRequest(clientApp1, uid1, 'response1', clientApp2)}>Request from client1</button><br />
+                Client1 response: {response1} <br />
+                <button onClick={this.sendRequest(clientApp2, uid2, 'response2', clientApp1)}>Request from client2</button><br />
+                Client2 response: {response2}<br />
+              </p>
+            </div>
+          )
+        }
+
+        sendRequest = (app, uid, stateKey, otherClientApp) => () => {
+          const request = { now: Date.now(), uid }
+          const ref = app.database().ref('testRequestResponse')
+          const key = ref.child('request').push(request).key
+          ref.child('response/' + key).on('value', this.handleResponse(stateKey))
+
+          if (this.state.testClientSecurity) {
+            const otherRef = otherClientApp.database().ref('testRequestResponse')
+            otherRef.child('request/' + key).on('value', snapshot => snapshot.exists() && console.error('client was able to listen to a response from another client'), err => console.info('client security for requests is good'))
+            otherRef.child('response/' + key).on('value', snapshot => snapshot.exists() && console.error('client was able to listen to a response from another client'), err => console.info('client security for responses is good'))
+          }
+        }
+
+        handleResponse = stateKey => {
+          const handler = snapshot => {
+            if (snapshot.exists()) {
+              snapshot.ref.off('value', handler)
+              if (!this.state.preventRemove) snapshot.ref.remove()
+              this.setState({ [stateKey]: snapshot.val().result })
+            }
+          }
+          return handler
+        }
+
+        checkboxToState = stateKey => e => this.setState({ [stateKey]: e.currentTarget.checked })
+      }
+
+      class Service extends React.Component {
+
+        callback = null
+
+        componentWillMount() {
+          this.callback = serviceApp.database()
+            .ref('testRequestResponse/request')
+            .on('child_added', this.onRequest)
+        }
+
+        render() {
+          return <p>Service running</p>
+        }
+
+        componentWillUnmount() {
+          if (this.callback) {
+            serviceApp.database()
+              .ref('testRequestResponse/request')
+              .off('child_added', this.callback)
+
+            this.callback = null
+          }
+        }
+
+        onRequest = snapshot => {
+          snapshot.ref.remove()
+          const { now, uid } = snapshot.val()
+          serviceApp.database().ref('testRequestResponse/response/' + snapshot.key).set({ result: now + ' - ' + now, uid })
+        }
+      }
+
+      class Application extends React.Component {
+        state = { client1User: null, client2User: null, serviceUser: null }
+
+        componentWillMount() {
+          clientApp1.auth().onAuthStateChanged(user => { this.setState({ client1User: user }) })
+          clientApp2.auth().onAuthStateChanged(user => { this.setState({ client2User: user }) })
+          serviceApp.auth().onAuthStateChanged(user => { this.setState({ serviceUser: user }) })
+        }
+
+        render() {
+          const { client1User, client2User, serviceUser } = this.state
+          const allAppsAuthenticated = !!client1User && !!client2User && !!serviceUser
+          return (
+            <div>
+              { allAppsAuthenticated
+                ? <FirebaseRequestResponse uid1={client1User.uid} uid2={client2User.uid} />
+                : <p>Authenticating</p>
+              }
+            </div>
+          )
+        }
+      }
+
+      ReactDOM.render(
+        <Application />,
+        document.getElementById('container')
+      )
+    </script>
+  </body>
+</html>
