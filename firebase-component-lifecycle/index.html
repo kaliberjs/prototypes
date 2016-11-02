@@ -40,26 +40,30 @@
       }
 
       class Application extends React.Component {
-        state = { showValue: true }
+        state = { showValue: true, userAvailable: false }
+
+        componentWillMount() {
+          auth.onAuthStateChanged(user => { this.setState({ userAvailable: !!user }) })
+        }
 
         render() {
-          const { showValue } = this.state
+          const { showValue, userAvailable } = this.state
           return (
             <div>
               <button onClick={ _ => this.setState({ showValue: !showValue }) }>Toggle</button>
-              { showValue && <FirebaseValue /> }
+              { userAvailable
+                ? showValue && <FirebaseValue />
+                : <p>Authenticating</p>
+              }
             </div>
           )
         }
       }
 
-      firebase.auth().onAuthStateChanged(user => {
-        if (user)
-          ReactDOM.render(
-            <Application />,
-            document.getElementById('container')
-          )
-      })
+      ReactDOM.render(
+        <Application />,
+        document.getElementById('container')
+      )
     </script>
   </body>
 </html>

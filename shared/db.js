@@ -1,23 +1,35 @@
-firebase.initializeApp({
-  apiKey: "AIzaSyBKedos9ktYW5yHW15txGZsqwF0vwVcX3E",
-  databaseURL: 'https://kaliberjs-prototypes.firebaseio.com'
-})
+const app = initializeApp()
+const db = app.database()
+const auth = app.auth()
 
-const auth = firebase.auth()
-auth.onAuthStateChanged(authenticate)
+function initializeApp({ appId = pathBasedAppId(), config = configuration } = {}) {
+  console.log('Initializing ' + appId)
+  const app = firebase.initializeApp({
+    apiKey: "AIzaSyBKedos9ktYW5yHW15txGZsqwF0vwVcX3E",
+    databaseURL: 'https://kaliberjs-prototypes.firebaseio.com'
+  }, appId)
+  const auth = app.auth()
+  auth.onAuthStateChanged(authenticate)
 
-const db = firebase.database()
+  return app
 
-function authenticate(user) {
-  if (user) {
-    console.log('Authenticated: ' + (user.isAnonymous ? 'anonymous' : user.email))
-  } else {
-    if (configuration.email && configuration.password) {
-      console.log('Authenticating using email and password')
-      auth.signInWithEmailAndPassword(configuration.email, configuration.password)
+  function authenticate(user) {
+    if (user) {
+      console.log('Authenticated: ' + (user.isAnonymous ? 'anonymous' : user.email))
     } else {
-      console.log('Authenticating anonymously')
-      auth.signInAnonymously()
+      if (config.email && config.password) {
+        console.log('Authenticating using email and password')
+        auth.signInWithEmailAndPassword(config.email, config.password)
+      } else {
+        console.log('Authenticating anonymously')
+        auth.signInAnonymously()
+      }
     }
   }
 }
+
+function pathBasedAppId() {
+  const [appId] = document.location.href.split('?')
+  return appId
+}
+
