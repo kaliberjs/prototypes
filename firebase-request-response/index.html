@@ -17,9 +17,9 @@
     <script type="text/babel" data-plugins='transform-class-properties'>
 
       const baseId = pathBasedAppId()
-      const clientApp1 = initializeApp({ appId: baseId + '-client1', config: {} })
-      const clientApp2 = initializeApp({ appId: baseId + '-client2', config: {} })
-      const serviceApp = initializeApp({ appId: baseId + '-service', config: configuration })
+      const clientApp1 = new FirebaseApp(baseId + '-client1')
+      const clientApp2 = new FirebaseApp(baseId + '-client2')
+      const serviceApp = new FirebaseApp(baseId + '-service')
 
       class FirebaseRequestResponse extends React.Component {
 
@@ -49,12 +49,12 @@
 
         sendRequest = (app, uid, stateKey, otherClientApp) => () => {
           const request = { now: Date.now(), uid }
-          const ref = app.database().ref('testRequestResponse')
+          const ref = app.db.ref('testRequestResponse')
           const key = ref.child('request').push(request).key
           ref.child('response/' + key).on('value', this.handleResponse(stateKey))
 
           if (this.state.testClientSecurity) {
-            const otherRef = otherClientApp.database().ref('testRequestResponse')
+            const otherRef = otherClientApp.db.ref('testRequestResponse')
             otherRef.child('request/' + key).on('value', snapshot => snapshot.exists() && console.error('client was able to listen to a response from another client'), err => console.info('client security for requests is good'))
             otherRef.child('response/' + key).on('value', snapshot => snapshot.exists() && console.error('client was able to listen to a response from another client'), err => console.info('client security for responses is good'))
           }
@@ -79,7 +79,7 @@
         callback = null
 
         componentWillMount() {
-          this.callback = serviceApp.database()
+          this.callback = serviceApp.db
             .ref('testRequestResponse/request')
             .on('child_added', this.onRequest)
         }
@@ -90,7 +90,7 @@
 
         componentWillUnmount() {
           if (this.callback) {
-            serviceApp.database()
+            serviceApp.db
               .ref('testRequestResponse/request')
               .off('child_added', this.callback)
 
@@ -101,17 +101,17 @@
         onRequest = snapshot => {
           snapshot.ref.remove()
           const { now, uid } = snapshot.val()
-          serviceApp.database().ref('testRequestResponse/response/' + snapshot.key).set({ result: now + ' - ' + now, uid })
+          serviceApp.db.ref('testRequestResponse/response/' + snapshot.key).set({ result: now + ' - ' + now, uid })
         }
       }
 
       class Application extends React.Component {
-        state = { client1User: null, client2User: null, serviceUser: null }
+        state = { client1User: null, client2User: null, serviceAuthenticated: null }
 
         componentWillMount() {
-          clientApp1.auth().onAuthStateChanged(user => { this.setState({ client1User: user }) })
-          clientApp2.auth().onAuthStateChanged(user => { this.setState({ client2User: user }) })
-          serviceApp.auth().onAuthStateChanged(user => { this.setState({ serviceUser: user }) })
+          clientApp1.authenticateAnonymously().then(user => { this.setState({ client1User: user }) })
+          clientApp2.authenticateAnonymously().then(user => { this.setState({ client2User: user }) })
+          serviceApp.authenticateWithEmailAndPassword(configuration).then(user => { this.setState({ serviceUser: user }) })
         }
 
         render() {

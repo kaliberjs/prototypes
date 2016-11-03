@@ -1,30 +1,56 @@
-const app = initializeApp()
-const db = app.database()
-const auth = app.auth()
+function FirebaseApp(appId = pathBasedAppId()) {
 
-function initializeApp({ appId = pathBasedAppId(), config = configuration } = {}) {
-  console.log('Initializing ' + appId)
   const app = firebase.initializeApp({
     apiKey: "AIzaSyBKedos9ktYW5yHW15txGZsqwF0vwVcX3E",
     databaseURL: 'https://kaliberjs-prototypes.firebaseio.com'
   }, appId)
+
+  this.authenticateAnonymously = authenticateAnonymously
+  this.authenticateWithEmailAndPassword = authenticateWithEmailAndPassword
+  this.app = app
+  this.db = app.database()
+
   const auth = app.auth()
-  auth.onAuthStateChanged(authenticate)
 
-  return app
+  function authenticate({ isCorrect, signin, messages: {
+    authenticated, incorrectProviderId, authenticating
+  }}) {
+    return new Promise((resolve, reject) => {
+      const unsubscribe = auth.onAuthStateChanged(user => {
+        user
+          ? (
+            isCorrect(user)
+              ? (console.log(authenticated(user)), unsubscribe(), resolve(user))
+              : (console.log(incorrectProviderId), auth.signOut())
+          )
+          : (console.log(authenticating), unsubscribe(), resolve(signin(auth)))
+        }
+      )
+    })
+  }
 
-  function authenticate(user) {
-    if (user) {
-      console.log('Authenticated: ' + (user.isAnonymous ? 'anonymous' : user.email))
-    } else {
-      if (config.email && config.password) {
-        console.log('Authenticating using email and password')
-        auth.signInWithEmailAndPassword(config.email, config.password)
-      } else {
-        console.log('Authenticating anonymously')
-        auth.signInAnonymously()
+  function authenticateAnonymously() {
+    return authenticate({
+      isCorrect: user => user.isAnonymous,
+      signin: auth => auth.signInAnonymously(),
+      messages: {
+        authenticated: _ => 'Athenticated anonymously',
+        incorrectProviderId: 'Existing authentication is not anonymous, signing out',
+        authenticating: 'Authenticating anonymously'
       }
-    }
+    })
+  }
+
+  function authenticateWithEmailAndPassword({ email, password }) {
+    return authenticate({
+      isCorrect: ({ providerData: [ { providerId } ] }) => providerId === 'password',
+      signin: auth => auth.signInWithEmailAndPassword(email, password),
+      messages: {
+        authenticated: user => 'Athenticated as ' + user.email,
+        incorrectProviderId: 'Existing authentication is not authenticated using password, signing out',
+        authenticating: 'Authenticating with email and password'
+      }
+    })
   }
 }
 

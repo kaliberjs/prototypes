@@ -16,6 +16,8 @@
 
     <script type="text/babel" data-plugins='transform-class-properties'>
 
+      const { db, authenticateAnonymously } = new FirebaseApp()
+
       class FirebaseValue extends React.Component {
 
         state = { value: null }
@@ -40,18 +42,18 @@
       }
 
       class Application extends React.Component {
-        state = { showValue: true, userAvailable: false }
+        state = { showValue: true, authenticated: false }
 
         componentWillMount() {
-          auth.onAuthStateChanged(user => { this.setState({ userAvailable: !!user }) })
+          authenticateAnonymously().then(_ => this.setState({ authenticated: true }))
         }
 
         render() {
-          const { showValue, userAvailable } = this.state
+          const { showValue, authenticated } = this.state
           return (
             <div>
               <button onClick={ _ => this.setState({ showValue: !showValue }) }>Toggle</button>
-              { userAvailable
+              { authenticated
                 ? showValue && <FirebaseValue />
                 : <p>Authenticating</p>
               }
