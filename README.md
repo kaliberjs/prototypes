@@ -6,3 +6,5 @@ database, they are there.
 Some prototypes include `kaliberjs-prototypes-firebase-credentials.json` which is ignored by the
 `.gitignore` file. This file is obtained by creating a key for a service account in Firebase.
 The steps can be found in the [server setup documentation](https://firebase.google.com/docs/server/setup).
+
+The version of `node` that is used is `v6.9.1`
