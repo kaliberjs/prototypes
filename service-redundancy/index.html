@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Service redundancy</title>
+  </head>
+  <body>
+    <div id="container" />
+
+    <script src="../react/react.js"></script>
+    <script src="../react/react-dom.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.14.0/babel.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/3.5.0/firebase.js"></script>
+    <script type="text/javascript" src="../shared/db.js"></script>
+
+    <script type="text/babel" data-plugins='transform-class-properties'>
+
+      const clientApp = new FirebaseApp()
+
+      class ServiceRedundancy extends React.Component {
+
+        state = { response: null }
+
+        render() {
+          const { response } = this.state
+          const { uid } = this.props
+
+          return (
+            <div>
+              <p>
+                <button onClick={this.sendRequest}>Send request</button><br />
+                Response: { response }
+              </p>
+            </div>
+          )
+        }
+
+        sendRequest = () => {
+          const request = { value: Date.now(), uid: this.props.uid }
+          const ref = clientApp.db.ref('testServiceRedundancy')
+          const key = ref.child('request').push(request).key
+          ref.child('response/' + key).on('value', this.handleResponse)
+        }
+
+        handleResponse = snapshot => {
+          if (snapshot.exists()) {
+            snapshot.ref.off('value', this.handleResponse)
+            snapshot.ref.remove()
+            const response = snapshot.val().value
+            console.log(response)
+            this.setState({ response })
+          }
+        }
+      }
+
+      class Application extends React.Component {
+
+        state = { clientUser: null }
+
+        componentWillMount() {
+          clientApp.authenticateAnonymously().then(user => { this.setState({ clientUser: user }) })
+        }
+
+        render() {
+          const { clientUser } = this.state
+          return (
+            <div>
+              { clientUser
+                ? <ServiceRedundancy uid={clientUser.uid} />
+                : <p>Authenticating</p>
+              }
+            </div>
+          )
+        }
+      }
+
+      ReactDOM.render(
+        <Application />,
+        document.getElementById('container')
+      )
+    </script>
+  </body>
+</html>

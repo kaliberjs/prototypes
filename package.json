@@ -1,5 +1,6 @@
 {
   "dependencies": {
-    "firebase": "^3.5.3"
+    "firebase": "^3.5.3",
+    "firebase-queue": "^1.5.0"
   }
 }
