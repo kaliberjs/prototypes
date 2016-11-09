@@ -160,7 +160,7 @@ meow@~2.0.0:
     minimist "^1.1.0"
     object-assign "^1.0.0"
 
-minimist@^1.1.0:
+minimist, minimist@^1.1.0:
   version "1.2.0"
   resolved "https://registry.yarnpkg.com/minimist/-/minimist-1.2.0.tgz#a35008b20f41383eec1fb914f4cd5df79a264284"
 

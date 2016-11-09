@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "firebase": "^3.5.3",
-    "firebase-queue": "^1.5.0"
+    "firebase-queue": "^1.5.0",
+    "minimist": "^1.2.0"
   }
 }
