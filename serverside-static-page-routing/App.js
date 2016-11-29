@@ -57,8 +57,8 @@ function Link({ href, children }, { history }) {
     }
   }
 
-  function shouldHandleClick({ button, ctrlKey, shiftKey }) {
-    return button === 0 /* left */ && !(ctrlKey || shiftKey)
+  function shouldHandleClick({ button, ctrlKey, shiftKey, metaKey }) {
+    return button === 0 /* left */ && !(ctrlKey || shiftKey || metaKey)
   }
 }
 
