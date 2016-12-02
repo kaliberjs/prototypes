@@ -1,6 +1,6 @@
-const React = getReact()
+import React from 'react'
 
-class App extends React.Component {
+export default class App extends React.Component {
 
   static childContextTypes = {
     history: React.PropTypes.any
@@ -60,11 +60,4 @@ function Link({ href, children }, { history }) {
   function shouldHandleClick({ button, ctrlKey, shiftKey, metaKey }) {
     return button === 0 /* left */ && !(ctrlKey || shiftKey || metaKey)
   }
-}
-
-module.exports = App
-
-function getReact() {
-  try { return require('react') }
-  catch (e) { return React }
 }

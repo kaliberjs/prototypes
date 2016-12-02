@@ -2,17 +2,14 @@ const React = require('react')
 const ReactDomServer = require('react-dom/server')
 const express = require('express')
 const { parsePath } = require('history/PathUtils')
-const matchRoute = require('./routes')
-const { basename } = require('path')
+import matchRoute from './routes'
+import nodeRequire from '../shared/serverRequire'
 
-const App = require('./App')
+import App from './App'
 
 const app = express()
-const router = express.Router()
 
-app.use('/react', express.static('../react'))
-app.use('/history', express.static('../history'))
-app.use('/source', (req, res) => res.sendFile(require.resolve('./' + basename(req.path))))
+app.use(nodeRequire)
 app.use((req, res, next) => {
 
   const location = parsePath(req.url)
