@@ -1,6 +1,4 @@
-module.exports = matchRoute
-
-function matchRoute(location) {
+export default function matchRoute(location) {
   const routes = {
     '/': {},
     '/route1': {},

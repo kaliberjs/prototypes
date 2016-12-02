@@ -2,8 +2,10 @@
   "dependencies": {
     "babel-core": "^6.18.2",
     "babel-plugin-transform-class-properties": "^6.19.0",
+    "babel-plugin-transform-es2015-modules-commonjs": "^6.18.0",
     "babel-plugin-transform-react-jsx": "^6.8.0",
     "babel-watch": "^2.0.3",
+    "body-parser": "^1.15.2",
     "express": "^4.14.0",
     "firebase": "^3.5.3",
     "firebase-admin": "^4.0.1",
