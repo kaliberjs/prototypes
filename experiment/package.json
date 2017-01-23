@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "firebase-queue": "^1.6.1",
+    "xstream": "^9.3.0"
+  }
+}
