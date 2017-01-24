@@ -23,10 +23,8 @@ function Service({
 
   function handleRequest({ payload, uid, _id }, progress, resolve, reject) {
     processValue(payload, uid)
-      .then(processedValue =>
-        responseRef.child(_id).set({ payload: processedValue, uid })
-          .then(resolve)
-      )
+      .then(payload => responseRef.child(_id).set({ payload, uid }))
+      .then(resolve)
       .catch(x => { reportError(x); reject(x) })
   }
 }

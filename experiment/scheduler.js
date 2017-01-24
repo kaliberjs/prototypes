@@ -61,11 +61,27 @@ function Scheduler({ ref, reportError, options: { interval = 500 } }) {
   ref.on('child_removed', data => { delete jobs[data.key] })
 
   let serverOffset = 0
-  syncServerOffset().then(_ => { processJobs() })
+  let currentRun = syncServerOffset().then(_ => processJobs() )
+
+  let timeoutId = null
+
+  this.shutdown = () => {
+    // theorically we might have timing issues, hence the double `clearTimeout`
+    clearTimeout(timeoutId)
+    return currentRun.then(_ => clearTimeout(timeoutId))
+  }
 
   function processJobs() {
-    Promise.all(asArray(jobs).map(processJob))
-      .then(_ => { setTimeout(processJobs, interval) })
+    return Promise.all(asArray(jobs).map(processJob).map(p => p.catch(reportError)))
+      .then(_ => { scheduleNextRun() })
+  }
+
+  function scheduleNextRun() {
+    timeoutId = setTimeout(run, interval)
+
+    function run() {
+      currentRun = processJobs()
+    }
   }
 
   function processJob(data) {
