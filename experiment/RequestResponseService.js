@@ -1,15 +1,13 @@
 const Queue = require('firebase-queue')
 
-module.exports = Service
+module.exports = RequestResponseService
 
-function Service({
+function RequestResponseService({
   ref,
   processValue, // (payload: any, uid: string) => Promise<any>
   reportError,
   queueOptions: { numWorkers = 1, specId = null, suppressStack = false } = {}
 }) {
-  if (!(this instanceof Service))
-    return new Service({ ref, processValue, { numWorkers, specId, suppressStack }, reportError })
 
   const tasksRef = ref.child('request')
   const specsRef = ref.child('specs')
@@ -29,7 +27,7 @@ function Service({
   }
 }
 
-Service.createRules = function(serviceUid, { additionalRequestValidation = 'true' } = {}) {
+RequestResponseService.createRules = function(serviceUid, { additionalRequestValidation = 'true' } = {}) {
   const isService = `(auth.uid === '${serviceUid}')`
   const ownedByCurrentUser = data => `(auth.uid === ${data}.child('uid').val())`
 

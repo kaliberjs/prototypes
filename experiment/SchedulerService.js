@@ -38,22 +38,24 @@
  * the contents of firebase.database.ServerValue.TIMESTAMP as a value.
  */
 const syncToObject = require('./syncToObject')
+const locationToRef = require('./locationToRef')
 
 const ms = require('ms')
 
 const noop = Promise.resolve(null)
 
-module.exports = Scheduler
+module.exports = SchedulerService
 
-Scheduler.createFromData = (data, reportError) => new Scheduler({
-  
+SchedulerService.createFromData = (data, reportError) => new SchedulerService({
+  ref: locationToRef(data, 'location'),
+  options: data.child('options').val(),
+  reportError
 })
 
 // This can be implemented more efficiently, but that requires more code and should only be
 // done once you find yourself in a situation where the performance suffers.
 // If you have a lot of `single` jobs, you might consider removing them once `_ran` is set.
-function Scheduler({ ref, reportError, options: { interval = 500 } }) {
-  if (!(this instanceof Scheduler)) return new Scheduler({ ref, reportError, options: { interval } })
+function SchedulerService({ ref, reportError, options: { interval = 500 } }) {
 
   const { root } = ref
   const processors = {

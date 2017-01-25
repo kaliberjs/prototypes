@@ -29,7 +29,7 @@
  *     location: 'source/location',
  *     list: true
  *   },
- *   merge: 'mergeObject'
+ *   merge: 'mergeObjects'
  * }
  *
  *
@@ -37,11 +37,35 @@
 
 const { Stream } = require('xstream')
 const sampleCombine = require('xstream/extra/sampleCombine')
+const ServiceFactory = require('./ServiceFactory')
+const locationToRef = require('./locationToRef')
+
+const noop = Promise.resolve(null)
 
 module.exports = TransformService
 
 TransformService.SampleCombine = SampleCombine
 TransformService.Transfer = Transfer
+TransformService.createFromData = (data, reportError) => new TransformService({
+  ref: locationToRef(data, 'location'),
+  reportError
+})
+
+function TransformService({ ref, reportError }) {
+
+  const constructors = {
+    transfer: Transfer.createFromData,
+    sampleCombine: SampleCombine.createFromData
+  }
+
+  ServiceFactory.call(this, { ref, reportError, constructors })
+}
+
+Transfer.createFromData = (data, reportError) => new Transfer({
+  source: { ref: locationToRef(data, 'source/location'), queueOptions: data.child('source/queueOptions').val() },
+  target: { ref: locationToRef(data, 'target/location'), list: data.child('list').val() },
+  reportError
+})
 
 function Transfer({
   source: { ref: sourceRef, queueOptions = {} }, // this currently only works with list style, some research is needed for
@@ -69,6 +93,24 @@ function Transfer({
 //----a-----b-----c--d------ source
 //     sampleCombine         merge = ([a, b]) => '' + a + b
 //-------2a----3b-------4d-- target
+SampleCombine.createFromData = (data, reportError) => {
+  const mergeFunctions = {
+    mergeObjects
+  }
+
+  return new SampleCombine({
+    sample: { ref: locationToRef(data, 'sample/location'), queueOptions: data.child('sample/queueOptions').val() },
+    sources: data.child('sources').val().map(({ location, list }) => ({ ref: data.ref.root.child(location), list })),
+    target: { ref: locationToRef(data, 'target/location'), list: data.child('list').val() },
+    merge: mergeFunctions[data.child('merge').val()] || (x => x),
+    reportError
+  })
+
+  function mergeObject(objects) {
+    return object.reduce((result, obj) => Object.assign(result, obj), {})
+  }
+}
+
 function SampleCombine({
   sample,  // { ref: sampleRef, queueOptions = {} },
   sources, // [{ ref, list = false }]

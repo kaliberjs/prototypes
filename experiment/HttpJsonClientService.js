@@ -1,5 +1,7 @@
-const Service = require('request-response-service')
+const Service = require('RequestResponseService')
 const requestify = require('requestify')
+
+module.exports = HttpJsonClientService
 
 /*
  * {
