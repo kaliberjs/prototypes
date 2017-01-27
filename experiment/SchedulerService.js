@@ -39,6 +39,7 @@
  */
 const syncToObject = require('./syncToObject')
 const locationToRef = require('./locationToRef')
+const SERVER_TIMESTAMP = {'.sv': 'timestamp'}
 
 const ms = require('ms')
 
@@ -48,14 +49,16 @@ module.exports = SchedulerService
 
 SchedulerService.createFromData = (data, reportError) => new SchedulerService({
   ref: locationToRef(data, 'location'),
-  options: data.child('options').val(),
+  options: data.child('options').val() || undefined,
   reportError
 })
 
 // This can be implemented more efficiently, but that requires more code and should only be
 // done once you find yourself in a situation where the performance suffers.
 // If you have a lot of `single` jobs, you might consider removing them once `_ran` is set.
-function SchedulerService({ ref, reportError, options: { interval = 500 } }) {
+function SchedulerService({ ref, reportError, options: { interval = 500 } = {} }) {
+
+  console.log('Scheduler service started')
 
   const { root } = ref
   const processors = {
@@ -75,7 +78,7 @@ function SchedulerService({ ref, reportError, options: { interval = 500 } }) {
     stopSync()
     // theorically we might have timing issues, hence the double `clearTimeout`
     clearTimeout(timeoutId)
-    return currentRun.then(_ => clearTimeout(timeoutId))
+    return currentRun.then(_ => { clearTimeout(timeoutId); console.log('Scheduler service stopped')})
   }
 
   function processJobs() {
@@ -118,12 +121,14 @@ function SchedulerService({ ref, reportError, options: { interval = 500 } }) {
   }
 
   function processRecurring(data) {
+    const interval = ms(data.child('interval').val())
+    const time = getServerTime()
+
     if (!data.hasChild('_nextRun')) return data.ref
-      .update({ '_nextRun': data.child('start').val() })
+      .update({ '_nextRun': determineCorrectStart(data.child('start').val(), time, interval) })
       .then(_ => data.ref.once('value'))
       .then(processRecurring)
 
-    const time = getServerTime()
     const nextRun = data.child('_nextRun').val()
 
     if (nextRun > time) return noop
@@ -131,15 +136,21 @@ function SchedulerService({ ref, reportError, options: { interval = 500 } }) {
     const path = getPath(data.ref)
     const push = data.child('push').val()
     const update = {
-      [path + '/_lastRun']: time,
-      [path + '/_nextRun']: nextRun + ms(data.child('interval').val()),
+      [path + '/_lastRun']: SERVER_TIMESTAMP,
+      [path + '/_nextRun']: nextRun + interval,
       [getChildPath(push.location)]: JSON.parse(push.data)
     }
     return root.update(update).catch(e => setError(data, e.message))
   }
 
+  function determineCorrectStart(start, time, interval) {
+    return start > time
+      ? start
+      : start + (Math.ceil((time - start) / interval) * interval)
+  }
+
   function syncServerOffset() {
-    ref.root.child('.info/serverTimeOffset').once('value')
+    return ref.root.child('.info/serverTimeOffset').once('value')
       .then(data => {
         serverOffset = data.val()
         data.ref.on('value', data => { serverOffset = data.val() })
@@ -158,7 +169,7 @@ function SchedulerService({ ref, reportError, options: { interval = 500 } }) {
     return prependParent(ref.parent, ref.key)
 
     function prependParent(ref, path) {
-      return ref ? withParent(ref.parent, ref.key + '/' + path) : path
+      return ref && ref.parent ? prependParent(ref.parent, ref.key + '/' + path) : path
     }
   }
 

@@ -1,3 +1,5 @@
+const noop = Promise.resolve(null)
+
 module.exports = ServiceFactory
 
 function ServiceFactory({ ref, reportError, constructors }) {
@@ -35,9 +37,11 @@ function ServiceFactory({ ref, reportError, constructors }) {
 
     function createInstance(data) {
       const type = data.child('type').val()
+
       const constructor = constructors[type]
       if (!constructor) return setAndReportError(data.ref, `Could not find constructor for '${type}'`)
 
+      console.log(`Creating service of type '${type}'`)
       return constructor(data, reportError)
     }
 

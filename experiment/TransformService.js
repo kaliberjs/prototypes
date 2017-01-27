@@ -34,13 +34,11 @@
  *
  *
  */
-
+const Queue = require('firebase-queue')
 const { Stream } = require('xstream')
 const sampleCombine = require('xstream/extra/sampleCombine')
 const ServiceFactory = require('./ServiceFactory')
 const locationToRef = require('./locationToRef')
-
-const noop = Promise.resolve(null)
 
 module.exports = TransformService
 
@@ -62,8 +60,8 @@ function TransformService({ ref, reportError }) {
 }
 
 Transfer.createFromData = (data, reportError) => new Transfer({
-  source: { ref: locationToRef(data, 'source/location'), queueOptions: data.child('source/queueOptions').val() },
-  target: { ref: locationToRef(data, 'target/location'), list: data.child('list').val() },
+  source: { ref: locationToRef(data, 'source/location'), queueOptions: data.child('source/queueOptions').val() || undefined },
+  target: { ref: locationToRef(data, 'target/location'), list: data.child('target/list').val() },
   reportError
 })
 
@@ -78,7 +76,7 @@ function Transfer({
 
   const options = Object.assign({}, queueOptions, { sanitize: false })
 
-  const queue = new Queue({ tasksRef: ref, specsRef: null }, queueOptions, handleRequest)
+  const queue = new Queue({ tasksRef: sourceRef, specsRef: null }, queueOptions, handleRequest)
 
   this.shutdown = () => queue.shutdown()
 
@@ -101,7 +99,7 @@ SampleCombine.createFromData = (data, reportError) => {
   return new SampleCombine({
     sample: { ref: locationToRef(data, 'sample/location'), queueOptions: data.child('sample/queueOptions').val() },
     sources: data.child('sources').val().map(({ location, list }) => ({ ref: data.ref.root.child(location), list })),
-    target: { ref: locationToRef(data, 'target/location'), list: data.child('list').val() },
+    target: { ref: locationToRef(data, 'target/location'), list: data.child('target/list').val() },
     merge: mergeFunctions[data.child('merge').val()] || (x => x),
     reportError
   })
@@ -130,7 +128,7 @@ function SampleCombine({
     .compose(sampleCombine(...sourceStreams))
     .map(merge)
     .addListener({
-      next: data => { if (list) ref.push(data) else ref.set(data) }
+      next: data => { list ? ref.push(data) : ref.set(data) },
       error: reportError
     })
 
@@ -146,7 +144,8 @@ function SampleCombine({
           resolve()
         })
       }),
-      shutdown = () => Promise.resolve(queue && queue.shutdown())
+      shutdown: () => Promise.resolve(queue && queue.shutdown())
+    }
   }
 
   function refToStream({ ref, list = false }) {

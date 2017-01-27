@@ -1,4 +1,4 @@
-const Service = require('RequestResponseService')
+const Service = require('./RequestResponseService')
 const requestify = require('requestify')
 
 module.exports = HttpJsonClientService

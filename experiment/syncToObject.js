@@ -1,4 +1,4 @@
-module.export = syncToObject
+module.exports = syncToObject
 
 function syncToObject(ref, obj) {
 
