@@ -36,7 +36,7 @@
  */
 const Queue = require('firebase-queue')
 const { Stream } = require('xstream')
-const sampleCombine = require('xstream/extra/sampleCombine')
+const sampleCombine = require('xstream/extra/sampleCombine').default
 const ServiceFactory = require('./ServiceFactory')
 const locationToRef = require('./locationToRef')
 
@@ -76,7 +76,7 @@ function Transfer({
 
   const options = Object.assign({}, queueOptions, { sanitize: false })
 
-  const queue = new Queue({ tasksRef: sourceRef, specsRef: null }, queueOptions, handleRequest)
+  const queue = new Queue({ tasksRef: sourceRef, specsRef: null }, options, handleRequest)
 
   this.shutdown = () => queue.shutdown()
 
@@ -97,15 +97,30 @@ SampleCombine.createFromData = (data, reportError) => {
   }
 
   return new SampleCombine({
-    sample: { ref: locationToRef(data, 'sample/location'), queueOptions: data.child('sample/queueOptions').val() },
+    sample: { ref: locationToRef(data, 'sample/location'), queueOptions: data.child('sample/queueOptions').val() || undefined },
     sources: data.child('sources').val().map(({ location, list }) => ({ ref: data.ref.root.child(location), list })),
     target: { ref: locationToRef(data, 'target/location'), list: data.child('target/list').val() },
     merge: mergeFunctions[data.child('merge').val()] || (x => x),
     reportError
   })
 
-  function mergeObject(objects) {
-    return object.reduce((result, obj) => Object.assign(result, obj), {})
+  function mergeObjects(objects) {
+    return objects.reduce((result, obj) => merge(result, obj), {})
+  }
+
+  function merge(obj1, obj2) {
+    return Object.keys(obj2).reduce((result, key) => {
+      const oldValue = result[key]
+      const newValue = obj2[key]
+      if (isObject(oldValue) && isObject(newValue)) result[key] = merge(oldValue, newValue)
+      else if (newValue !== undefined) result[key] = newValue
+
+      return result
+    }, obj1)
+  }
+
+  function isObject(value) {
+    return value && !Object.getPrototypeOf(Object.getPrototypeOf(value))
   }
 }
 
@@ -116,11 +131,12 @@ function SampleCombine({
   merge, // ([sample, source0, ..., sourceN]) => target
   reportError
 }) {
+  if (!sample.queueOptions) sample.queueOptions = {}
   // we don't want any custom specs, if we want to support specs, a specsref needs to be passed in
-  delete queueOptions.specId
+  delete sample.queueOptions.specId
 
   const { stream: sampleStream, shutdown: sampleShutdown } = refToQueueToStream(sample)
-  const [sourceStreams, sourceShutdowns] = sourceRefs
+  const [sourceStreams, sourceShutdowns] = sources
     .map(refToStream)
     .reduce(([streams, shutdowns], { stream, shutdown }) => [[...streams, stream], [...shutdowns, shutdown]], [[], []])
 

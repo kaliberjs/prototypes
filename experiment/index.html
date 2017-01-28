@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Firebase component lifecycle</title>
+  </head>
+  <body>
+    <div id="container" />
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.14.0/babel.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/3.6.6/firebase.js"></script>
+
+    <script type="text/babel" data-plugins='transform-class-properties'>
+      const redirect_uri = 'http://localhost:8080'
+      const client_id = '541901847552-vmglg7lqm830en41vatrrchi3c17lhdi.apps.googleusercontent.com'
+      const scope = 'https://www.googleapis.com/auth/calendar'
+
+      const provider = new firebase.auth.GoogleAuthProvider()
+      provider.addScope(scope)
+      provider.setCustomParameters({ access_type: 'offline' })
+
+      const app = firebase.initializeApp({
+        apiKey: "AIzaSyCwWfFxA3mS9wFDn0uBzqB6wxj2_kUS_-A",
+        authDomain: "experiment-ce0d3.firebaseapp.com",
+        databaseURL: "https://experiment-ce0d3.firebaseio.com"
+      })
+
+      const auth = app.auth()
+      const db = app.database()
+
+      // about 'prompt': only needed now to obtain the refresh token, once the system works this can be removed
+      const url = 'https://accounts.google.com/o/oauth2/v2/auth?' +
+        'response_type=code&' +
+        'client_id=' + encodeURIComponent(client_id) + '&' +
+        'redirect_uri=' + encodeURIComponent(redirect_uri) + '&' +
+        'access_type=offline&' +
+        'prompt=consent&' +
+        'include_granted_scopes=true&' +
+        'scope=' + scope
+console.log(url)
+      function getUser() {
+        return new Promise((resolve, reject) => {
+          auth.onAuthStateChanged(resolve)
+        })
+      }
+
+      const query = document.location.search.substr(1).split('&').map(x => x.split('=')).reduce((result, [key, value]) => (result[key] = value, result), {})
+      if (query.code) {
+        console.log(query)
+        // code and scope should be stored in firebase and picked up by service
+        // this would allow the service to obtain access token and refresh token
+        // access token should should returned to client (browser) and used for login
+        getUser()
+          .then(user => {
+            console.log('user', user)
+            return user || auth.signInAnonymously()
+          })
+          .then(user => {
+
+            const request = {
+              uid: user.uid,
+              payload: {
+                options: {
+                  body: {
+                    code: query.code,
+                    client_id,
+                    redirect_uri
+                  }
+                }
+              }
+            }
+
+            const { key } = db.ref('token/request').push(request)
+            return new Promise((resolve, reject) => {
+            console.error('key will not correctly be set by services')
+              db.ref('token/response').child(key).on('value', handleResponse)
+              function handleResponse(data) {
+                if (data.exists()) {
+                  resolve(data.ref.remove().then(_ => data.val().payload))
+                }
+              }
+            })
+          })
+          .then(res => {
+            console.log(res)
+            auth.link(auth.GoogleAuthProvider.credential(res.body.access_token))
+          })
+      } else {
+        document.location.href = url
+      }
+
+      /*
+      app.auth().signInWithPopup(provider).then(result => {
+        console.log(result)
+        console.log(result.credential.idToken)
+        result.user.getToken().then(token => {
+          console.log(token)
+        })
+      })
+      */
+    </script>
+    <a href="/index.html">index</a>
+  </body>
+</html>

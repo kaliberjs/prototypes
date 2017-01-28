@@ -1,5 +1,6 @@
 const Service = require('./RequestResponseService')
 const requestify = require('requestify')
+const locationToRef = require('./locationToRef')
 
 module.exports = HttpJsonClientService
 
@@ -12,14 +13,21 @@ module.exports = HttpJsonClientService
  *
  */
 
+HttpJsonClientService.createFromData = (data, reportError) => new HttpJsonClientService({
+  ref: locationToRef(data, 'location'),
+  reportError,
+  queueOptions: data.child('queueOptions').val() || undefined
+})
+
 function HttpJsonClientService({
   ref,
   reportError,
-  queueOptions: { numWorkers = 1, specId = null, suppressStack = false } = {}
+  queueOptions
 }) {
   Service.call(this, { ref, processValue, reportError, queueOptions })
 
   function processValue({ url, options }, uid) {
     return requestify.request(url, options)
+      .then(r => ({ status: r.code, headers: r.headers, body: r.getBody() }))
   }
 }

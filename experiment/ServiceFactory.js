@@ -32,7 +32,7 @@ function ServiceFactory({ ref, reportError, constructors }) {
     }
 
     function shutdownAndCreateInstance(data) {
-      shutdown(instance).then(_ => { instance = createInstance(data) })
+      shutdown(instance).then(_ => createInstance(data)).then(i => { instance = i })
     }
 
     function createInstance(data) {
@@ -46,6 +46,7 @@ function ServiceFactory({ ref, reportError, constructors }) {
     }
 
     function shutdown(instance) {
+      if (instance && !instance.shutdown) console.log(instance)
       return instance ? instance.shutdown() : noop
     }
 

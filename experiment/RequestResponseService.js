@@ -6,7 +6,7 @@ function RequestResponseService({
   ref,
   processValue, // (payload: any, uid: string) => Promise<any>
   reportError,
-  queueOptions: { numWorkers = 1, specId = null, suppressStack = false } = {}
+  queueOptions: { numWorkers = 1, specId = undefined, suppressStack = false } = {}
 }) {
 
   const tasksRef = ref.child('request')
